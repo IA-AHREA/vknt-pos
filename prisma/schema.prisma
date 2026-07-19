@@ -1,0 +1,56 @@
+generator db {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoMovimiento {
+  PAGO
+  CORRECCION
+}
+
+model Sistema {
+  id         Int      @id @default(autoincrement())
+  nombre     String   @unique
+  created_at DateTime @default(now())
+
+  outposts Outpost[]
+}
+
+model Outpost {
+  id_num            Int      @id
+  discord_id        String
+  nombre_pos        String
+  sistema_id        Int
+  pagado_hasta_mes  Int      @default(0)
+  anio_vencimiento  Int
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  sistema Sistema @relation(fields: [sistema_id], references: [id])
+  pagos   Pago[]
+
+  @@index([discord_id])
+}
+
+model Pago {
+  id                    Int            @id @default(autoincrement())
+  outpost_id            Int
+  tipo                  TipoMovimiento @default(PAGO)
+  meses                 Int
+  monto                 Float?
+  moneda                String?        @default("ISK")
+  registrado_por_id     String
+  mes_resultante        Int
+  anio_resultante       Int
+  created_at            DateTime       @default(now())
+
+  outpost Outpost @relation(fields: [outpost_id], references: [id_num], onDelete: Cascade)
+
+  @@index([outpost_id])
+}
