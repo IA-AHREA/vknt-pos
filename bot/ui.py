@@ -1,5 +1,9 @@
+from typing import Awaitable, Callable
+
 import discord
 from discord import ui
+
+from .utils import estado_texto
 
 
 class PaginadorView(ui.View):
@@ -50,3 +54,40 @@ class PaginadorView(ui.View):
                 await self.message.edit(view=self)
             except discord.HTTPException:
                 pass
+
+
+class SelectorPosView(ui.View):
+    """Dropdown para elegir una POS entre varias que tiene el mismo dueño."""
+
+    def __init__(
+        self,
+        outposts: list,
+        autor_id: int,
+        on_select: Callable[[discord.Interaction, object], Awaitable[None]],
+        timeout: float = 60,
+    ):
+        super().__init__(timeout=timeout)
+        self.autor_id = autor_id
+        self.on_select = on_select
+        self.por_id = {o.id_num: o for o in outposts}
+        self.selector.options = [
+            discord.SelectOption(
+                label=f"#{o.id_num} - {o.nombre_pos}"[:100],
+                description=estado_texto(o.pagado_hasta_mes, o.anio_vencimiento)[:100],
+                value=str(o.id_num),
+            )
+            for o in outposts[:25]
+        ]
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.autor_id:
+            await interaction.response.send_message(
+                "No podés usar este menú.", ephemeral=True
+            )
+            return False
+        return True
+
+    @ui.select(placeholder="Elegí una POS...")
+    async def selector(self, interaction: discord.Interaction, select: ui.Select):
+        outpost = self.por_id[int(select.values[0])]
+        await self.on_select(interaction, outpost)

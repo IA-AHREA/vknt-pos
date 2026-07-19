@@ -93,8 +93,9 @@ si algo falla a la mitad.
 
 | Comando | Quién | Descripción |
 |---|---|---|
-| `/registrar-pos` | CEO | Registra una nueva POS |
+| `/registrar-pos` | CEO | Registra una nueva POS (el ID se asigna solo, no hace falta capturarlo) |
 | `/borrar-pos` | CEO | Elimina una POS |
+| `/buscar` | CEO | Busca todas las POS de un usuario (respuesta solo visible para vos) y permite elegir una para editarla (nombre + estado de pago) |
 | `/reporte` | CEO | Lista paginada (con botones) de todas las POS |
 | `/corregir-pago` | CEO | Resta meses por error, queda en el historial |
 | `/historial-pos` | CEO | Historial de pagos/correcciones de una POS |
@@ -102,10 +103,11 @@ si algo falla a la mitad.
 | `/sistema-agregar` | CEO | Agrega un sistema EVE a la lista |
 | `/sistema-listar` | Todos | Lista los sistemas disponibles |
 | `/sistema-borrar` | CEO | Elimina un sistema (si no tiene POS asignadas) |
-| Clic derecho → "Pagar Outpost" | CEO | Abre el modal de pago (meses + monto opcional) |
+| Clic derecho → "Pagar Outpost" | CEO | Abre el modal de pago (meses + monto opcional). Si el usuario tiene varias POS, primero pide elegir cuál |
 
 ## Notas
 
+- Un mismo usuario puede tener cualquier cantidad de POS registradas; tanto el pago (clic derecho) como la búsqueda/edición (`/buscar`) piden elegir cuál cuando hay más de una.
 - `pagado_hasta_mes = 0` significa "pendiente" (nunca pagó).
 - Cada pago o corrección queda registrado en la tabla `Pago` con quién lo hizo,
   cuándo, cuántos meses y el monto (si se cargó).

@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from ..checks import es_ceo, es_ceo_interaction
 from ..db import db
-from ..ui import PaginadorView
+from ..ui import PaginadorView, SelectorPosView
 from ..utils import construir_paginas, estado_texto, sumar_meses
 
 
@@ -78,15 +78,28 @@ class PagoModal(ui.Modal, title="Registrar Meses de Pago"):
         )
 
 
+async def _abrir_pago(interaction: discord.Interaction, outpost):
+    await interaction.response.send_modal(PagoModal(outpost.id_num, outpost.nombre_pos))
+
+
 @app_commands.context_menu(name="Pagar Outpost")
 async def registrar_pago_context(interaction: discord.Interaction, message: discord.Message):
     if not es_ceo_interaction(interaction):
         return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
 
-    outpost = await db.outpost.find_first(where={"discord_id": str(message.author.id)})
-    if not outpost:
+    outposts = await db.outpost.find_many(
+        where={"discord_id": str(message.author.id)}, order={"id_num": "asc"}
+    )
+    if not outposts:
         return await interaction.response.send_message("❌ Usuario no registrado.", ephemeral=True)
-    await interaction.response.send_modal(PagoModal(outpost.id_num, outpost.nombre_pos))
+
+    if len(outposts) == 1:
+        return await interaction.response.send_modal(PagoModal(outposts[0].id_num, outposts[0].nombre_pos))
+
+    view = SelectorPosView(outposts, autor_id=interaction.user.id, on_select=_abrir_pago)
+    await interaction.response.send_message(
+        f"{message.author.mention} tiene varias POS, elegí cuál pagar:", view=view, ephemeral=True
+    )
 
 
 class PagosCog(commands.Cog):

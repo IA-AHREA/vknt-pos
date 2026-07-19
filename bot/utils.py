@@ -28,6 +28,10 @@ def estado_texto(mes: int, anio: int) -> str:
     return f"{nombre_mes(mes)} {anio}" if mes > 0 else nombre_mes(mes)
 
 
+def a_total_meses(anio: int, mes: int) -> int:
+    return anio * 12 + mes
+
+
 def construir_paginas(
     filas: list,
     fmt_fila,
