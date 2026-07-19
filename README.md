@@ -93,13 +93,14 @@ si algo falla a la mitad.
 
 | Comando | Quién | Descripción |
 |---|---|---|
+| `/ayuda` | Todos | Explica todos los comandos (respuesta solo visible para vos) |
 | `/registrar-pos` | CEO | Registra una nueva POS (el ID se asigna solo, no hace falta capturarlo) |
 | `/borrar-pos` | CEO | Elimina una POS |
 | `/buscar` | CEO | Busca todas las POS de un usuario (respuesta solo visible para vos) y permite elegir una para editarla (nombre + estado de pago) |
-| `/reporte` | CEO | Lista paginada (con botones) de todas las POS |
+| `/reporte` | CEO | Lista de POS en Embeds, con filtro (todos/morosos/al día) y ordenada por urgencia |
 | `/corregir-pago` | CEO | Resta meses por error, queda en el historial |
 | `/historial-pos` | CEO | Historial de pagos/correcciones de una POS |
-| `/recordar-mora` | CEO | Etiqueta a los morosos hasta cierto mes |
+| `/recordar-mora` | CEO | Etiqueta a quienes no tienen pagado el mes actual |
 | `/sistema-agregar` | CEO | Agrega un sistema EVE a la lista |
 | `/sistema-listar` | Todos | Lista los sistemas disponibles |
 | `/sistema-borrar` | CEO | Elimina un sistema (si no tiene POS asignadas) |

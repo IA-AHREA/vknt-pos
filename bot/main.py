@@ -18,6 +18,7 @@ EXTENSIONS = (
     "bot.commands.outposts",
     "bot.commands.pagos",
     "bot.commands.recordatorios",
+    "bot.commands.ayuda",
 )
 
 
