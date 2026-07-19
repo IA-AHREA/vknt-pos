@@ -7,9 +7,11 @@ from .utils import estado_texto
 
 
 class PaginadorView(ui.View):
-    """View genérica para paginar texto ya renderizado con botones."""
+    """View genérica para paginar texto o Embeds ya renderizados, con botones."""
 
-    def __init__(self, paginas: list[str], autor_id: int, timeout: float = 120):
+    def __init__(
+        self, paginas: list[str] | list[discord.Embed], autor_id: int, timeout: float = 120
+    ):
         super().__init__(timeout=timeout)
         self.paginas = paginas
         self.autor_id = autor_id
@@ -23,8 +25,15 @@ class PaginadorView(ui.View):
         self.anterior.disabled = self.pagina == 0
         self.siguiente.disabled = self.pagina >= len(self.paginas) - 1
 
-    def render(self) -> str:
-        return self.paginas[self.pagina]
+    def _render_kwargs(self) -> dict:
+        pagina = self.paginas[self.pagina]
+        if isinstance(pagina, discord.Embed):
+            return {"content": None, "embed": pagina}
+        return {"content": pagina, "embed": None}
+
+    async def enviar_inicial(self, interaction: discord.Interaction, ephemeral: bool = False) -> None:
+        await interaction.response.send_message(**self._render_kwargs(), view=self, ephemeral=ephemeral)
+        self.message = await interaction.original_response()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.autor_id:
@@ -38,13 +47,13 @@ class PaginadorView(ui.View):
     async def anterior(self, interaction: discord.Interaction, _button: ui.Button):
         self.pagina -= 1
         self._actualizar_botones()
-        await interaction.response.edit_message(content=self.render(), view=self)
+        await interaction.response.edit_message(**self._render_kwargs(), view=self)
 
     @ui.button(label="Siguiente ➡️", style=discord.ButtonStyle.secondary)
     async def siguiente(self, interaction: discord.Interaction, _button: ui.Button):
         self.pagina += 1
         self._actualizar_botones()
-        await interaction.response.edit_message(content=self.render(), view=self)
+        await interaction.response.edit_message(**self._render_kwargs(), view=self)
 
     async def on_timeout(self) -> None:
         for item in self.children:

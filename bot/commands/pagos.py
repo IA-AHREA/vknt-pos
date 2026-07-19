@@ -177,8 +177,7 @@ class PagosCog(commands.Cog):
         titulo = f"**Historial de pagos — POS #{id_id} ({outpost.nombre_pos})**"
         paginas = construir_paginas(pagos, fmt_fila, header, separator, titulo=titulo)
         view = PaginadorView(paginas, autor_id=interaction.user.id)
-        await interaction.response.send_message(view.render(), view=view)
-        view.message = await interaction.original_response()
+        await view.enviar_inicial(interaction)
 
 
 async def setup(bot: commands.Bot):

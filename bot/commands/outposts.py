@@ -7,11 +7,64 @@ from discord.ext import commands
 from ..checks import es_ceo
 from ..db import db
 from ..ui import PaginadorView, SelectorPosView
-from ..utils import a_total_meses, construir_paginas, estado_texto
+from ..utils import a_total_meses, es_moroso, estado_texto
 from .sistemas import sistema_autocomplete
 
 RANGO_ID_MIN = 100
 RANGO_ID_MAX = 999
+
+COLOR_MORA = 0xE74C3C
+COLOR_OK = 0x2ECC71
+EMOJI_MORA = "🔴"
+EMOJI_PENDIENTE = "⚫"
+EMOJI_OK = "🟢"
+
+ITEMS_POR_PAGINA_REPORTE = 6
+
+
+def _emoji_estado(outpost, anio_actual: int, mes_actual: int) -> str:
+    if outpost.pagado_hasta_mes == 0:
+        return EMOJI_PENDIENTE
+    return EMOJI_MORA if es_moroso(outpost, anio_actual, mes_actual) else EMOJI_OK
+
+
+def _orden_urgencia(outpost) -> tuple:
+    if outpost.pagado_hasta_mes == 0:
+        return (-1, 0)
+    return (0, a_total_meses(outpost.anio_vencimiento, outpost.pagado_hasta_mes))
+
+
+def _construir_embeds_reporte(
+    outposts: list, anio_actual: int, mes_actual: int
+) -> list[discord.Embed]:
+    total = len(outposts)
+    morosos = sum(1 for o in outposts if es_moroso(o, anio_actual, mes_actual))
+    al_dia = total - morosos
+    total_paginas = -(-total // ITEMS_POR_PAGINA_REPORTE)
+
+    embeds = []
+    for pagina in range(total_paginas):
+        inicio = pagina * ITEMS_POR_PAGINA_REPORTE
+        bloque = outposts[inicio:inicio + ITEMS_POR_PAGINA_REPORTE]
+        embed = discord.Embed(
+            title="📋 Reporte de POS",
+            description=f"🟢 **{al_dia}** al día　🔴 **{morosos}** en mora　·　Total: **{total}**",
+            color=COLOR_MORA if morosos else COLOR_OK,
+        )
+        for o in bloque:
+            emoji = _emoji_estado(o, anio_actual, mes_actual)
+            embed.add_field(
+                name=f"{emoji} #{o.id_num} — {o.nombre_pos}"[:256],
+                value=(
+                    f"👤 <@{o.discord_id}>\n"
+                    f"🌌 {o.sistema.nombre}\n"
+                    f"💳 {estado_texto(o.pagado_hasta_mes, o.anio_vencimiento)}"
+                ),
+                inline=True,
+            )
+        embed.set_footer(text=f"Página {pagina + 1}/{total_paginas}")
+        embeds.append(embed)
+    return embeds
 
 
 async def _siguiente_id_disponible() -> int | None:
@@ -142,24 +195,39 @@ class OutpostsCog(commands.Cog):
         await interaction.response.send_message(f"🗑️ POS #{id_id} eliminada.")
 
     @app_commands.command(name="reporte", description="Ver lista de pagos")
+    @app_commands.describe(estado="Filtrar por estado de pago")
+    @app_commands.choices(
+        estado=[
+            app_commands.Choice(name="Todos", value="todos"),
+            app_commands.Choice(name="Solo morosos", value="morosos"),
+            app_commands.Choice(name="Solo al día", value="al-dia"),
+        ]
+    )
     @es_ceo()
-    async def reporte(self, interaction: discord.Interaction):
-        filas = await db.outpost.find_many(include={"sistema": True}, order={"id_num": "asc"})
+    async def reporte(
+        self, interaction: discord.Interaction, estado: app_commands.Choice[str] = None
+    ):
+        filas = await db.outpost.find_many(include={"sistema": True})
         if not filas:
             return await interaction.response.send_message("No hay datos.")
 
-        header = f"{'ID':<4} | {'Dueño':<22} | {'Outpost':<15} | {'Estado':<20} | {'Sistema'}\n"
-        separator = "-" * 4 + "+" + "-" * 24 + "+" + "-" * 17 + "+" + "-" * 22 + "+" + "-" * 10 + "\n"
+        ahora = datetime.now()
+        filtro = estado.value if estado else "todos"
+        if filtro == "morosos":
+            filas = [o for o in filas if es_moroso(o, ahora.year, ahora.month)]
+        elif filtro == "al-dia":
+            filas = [o for o in filas if not es_moroso(o, ahora.year, ahora.month)]
 
-        def fmt_fila(o) -> str:
-            estado = estado_texto(o.pagado_hasta_mes, o.anio_vencimiento)
-            dueno = f"<@{o.discord_id}>"
-            return f"#{o.id_num:<3} | {dueno:<22} | {o.nombre_pos[:15]:<15} | {estado:<20} | {o.sistema.nombre}\n"
+        if not filas:
+            return await interaction.response.send_message(
+                "No hay POS que cumplan ese filtro.", ephemeral=True
+            )
 
-        paginas = construir_paginas(filas, fmt_fila, header, separator)
-        view = PaginadorView(paginas, autor_id=interaction.user.id)
-        await interaction.response.send_message(view.render(), view=view)
-        view.message = await interaction.original_response()
+        filas.sort(key=_orden_urgencia)
+
+        embeds = _construir_embeds_reporte(filas, ahora.year, ahora.month)
+        view = PaginadorView(embeds, autor_id=interaction.user.id)
+        await view.enviar_inicial(interaction)
 
     @app_commands.command(name="buscar", description="Busca las POS de un usuario (solo vos lo ves)")
     @es_ceo()

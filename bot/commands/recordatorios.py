@@ -6,15 +6,7 @@ from discord.ext import commands
 
 from ..checks import es_ceo
 from ..db import db
-from ..utils import estado_texto
-
-
-def _esta_moroso(outpost, anio_actual: int, mes_actual: int) -> bool:
-    if outpost.pagado_hasta_mes == 0:
-        return True
-    if outpost.anio_vencimiento < anio_actual:
-        return True
-    return outpost.anio_vencimiento == anio_actual and outpost.pagado_hasta_mes < mes_actual
+from ..utils import es_moroso, estado_texto
 
 
 class RecordatoriosCog(commands.Cog):
@@ -32,7 +24,7 @@ class RecordatoriosCog(commands.Cog):
         ahora = datetime.now()
         anio_actual, mes_actual = ahora.year, ahora.month
         outposts = await db.outpost.find_many(include={"sistema": True}, order={"id_num": "asc"})
-        morosos = [o for o in outposts if _esta_moroso(o, anio_actual, mes_actual)]
+        morosos = [o for o in outposts if es_moroso(o, anio_actual, mes_actual)]
 
         nombre_mes_actual = estado_texto(mes_actual, anio_actual).split(" ")[0]
 

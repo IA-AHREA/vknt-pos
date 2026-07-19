@@ -32,6 +32,14 @@ def a_total_meses(anio: int, mes: int) -> int:
     return anio * 12 + mes
 
 
+def es_moroso(outpost, anio_actual: int, mes_actual: int) -> bool:
+    if outpost.pagado_hasta_mes == 0:
+        return True
+    if outpost.anio_vencimiento < anio_actual:
+        return True
+    return outpost.anio_vencimiento == anio_actual and outpost.pagado_hasta_mes < mes_actual
+
+
 def construir_paginas(
     filas: list,
     fmt_fila,
